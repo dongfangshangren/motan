@@ -20,6 +20,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.weibo.api.motan.common.URLParamType;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.config.SocketConfig;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.jboss.resteasy.client.jaxrs.ResteasyClient;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
@@ -30,10 +35,11 @@ import com.weibo.api.motan.protocol.restful.RestServer;
 import com.weibo.api.motan.rpc.URL;
 import com.weibo.api.motan.util.LoggerUtil;
 import com.weibo.api.motan.util.MotanFrameworkUtil;
+import org.jboss.resteasy.client.jaxrs.engines.factory.ApacheHttpClient4EngineFactory;
 
 public abstract class AbstractEndpointFactory implements EndpointFactory {
 	/** 维持share channel 的service列表 **/
-	protected Map<String, RestServer> ipPort2ServerShareChannel = new HashMap<String, RestServer>();
+	protected final Map<String, RestServer> ipPort2ServerShareChannel = new HashMap<String, RestServer>();
 	// 维持share channel 的client列表 <ip:port,client>
 	private final Map<String, ResteasyWebTarget> ipPort2ClientShareChannel = new HashMap<String, ResteasyWebTarget>();
 
@@ -158,7 +164,31 @@ public abstract class AbstractEndpointFactory implements EndpointFactory {
 	protected abstract RestServer innerCreateServer(URL url);
 
 	protected ResteasyWebTarget innerCreateClient(URL url) {
-		ResteasyClient client = new ResteasyClientBuilder().build();
+		final Integer maxClientConn = url.getIntParameter(URLParamType.maxClientConnection.getName(),
+				URLParamType.maxClientConnection.getIntValue());
+
+		final RequestConfig requestConfig = RequestConfig
+				.custom()
+				.setConnectTimeout(url.getIntParameter(URLParamType.connectTimeout.name(), URLParamType.connectTimeout.getIntValue()))
+				.setSocketTimeout(url.getIntParameter(URLParamType.requestTimeout.name(), URLParamType.requestTimeout.getIntValue()))
+				.build();
+
+		final SocketConfig socketConfig = SocketConfig.custom()
+				.setTcpNoDelay(true)
+				.setSoKeepAlive(true)
+				.build();
+
+		HttpClient httpClient = HttpClientBuilder.create()
+				.setDefaultSocketConfig(socketConfig)
+				.setDefaultRequestConfig(requestConfig)
+				.setMaxConnTotal(maxClientConn)
+				.setMaxConnPerRoute(maxClientConn)
+				.build();
+
+		ResteasyClient client = new ResteasyClientBuilder()
+				.httpEngine(ApacheHttpClient4EngineFactory.create(httpClient))
+				.build();
+
 		String contextpath = url.getParameter("contextpath", "/");
 		if (!contextpath.startsWith("/"))
 			contextpath = "/" + contextpath;

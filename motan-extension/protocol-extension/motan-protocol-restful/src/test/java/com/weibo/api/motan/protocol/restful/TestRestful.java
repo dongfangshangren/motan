@@ -15,21 +15,22 @@
  */
 package com.weibo.api.motan.protocol.restful;
 
-import java.util.List;
-
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import com.weibo.api.motan.config.ProtocolConfig;
 import com.weibo.api.motan.config.RefererConfig;
 import com.weibo.api.motan.config.RegistryConfig;
 import com.weibo.api.motan.config.ServiceConfig;
 import com.weibo.api.motan.protocol.restful.HelloResource.User;
+import org.apache.catalina.LifecycleException;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class TestRestful {
 	private ServiceConfig<HelloResource> serviceConfig;
@@ -37,11 +38,14 @@ public class TestRestful {
 	private HelloResource resource;
 
 	@Before
-	public void setUp() {
+	public void setUp() throws Exception {
+		this.beforeInit();
 		ProtocolConfig protocolConfig = new ProtocolConfig();
 		protocolConfig.setId("testRpc");
 		protocolConfig.setName("restful");
-		protocolConfig.setEndpointFactory("netty");
+		protocolConfig.setEndpointFactory(this.getEndpointFactory());
+		protocolConfig.setParameters(this.getProtocolExtParameters());
+		protocolConfig.setRequestTimeout(5000);
 
 		RegistryConfig registryConfig = new RegistryConfig();
 		registryConfig.setName("local");
@@ -52,7 +56,9 @@ public class TestRestful {
 		serviceConfig.setRef(new RestHelloResource());
 		serviceConfig.setInterface(HelloResource.class);
 		serviceConfig.setProtocol(protocolConfig);
-		serviceConfig.setExport("testRpc:8002");
+		// 此处的端口配置对 servlet 服务器不起作用
+		// 为了能正常发现服务，要配置为真实的容器所监听的端口
+		serviceConfig.setExport("testRpc:" + getPort());
 		serviceConfig.setFilter("serverf");
 		serviceConfig.setGroup("test-group");
 		serviceConfig.setVersion("0.0.3");
@@ -61,7 +67,7 @@ public class TestRestful {
 		serviceConfig.export();
 
 		refererConfig = new RefererConfig<HelloResource>();
-		refererConfig.setDirectUrl("127.0.0.1:8002");
+        refererConfig.setRegistry(registryConfig);
 		refererConfig.setGroup("test-group");
 		refererConfig.setVersion("0.0.3");
 		refererConfig.setFilter("clientf");
@@ -69,6 +75,22 @@ public class TestRestful {
 		refererConfig.setInterface(HelloResource.class);
 
 		resource = refererConfig.getRef();
+	}
+
+	protected void beforeInit() throws LifecycleException {
+	}
+
+
+	protected String getEndpointFactory(){
+ 		return "netty";
+	}
+
+	int getPort(){
+		return 8002;
+	}
+
+	protected Map<String, String> getProtocolExtParameters(){
+		return Collections.emptyMap();
 	}
 
 	@Test
@@ -105,9 +127,13 @@ public class TestRestful {
 	}
 
 	@After
-	public void tearDown() {
+	public void tearDown() throws Exception {
 		refererConfig.destroy();
 		serviceConfig.unexport();
+		this.clean();
+	}
+
+	protected void clean() throws Exception {
 	}
 
 }

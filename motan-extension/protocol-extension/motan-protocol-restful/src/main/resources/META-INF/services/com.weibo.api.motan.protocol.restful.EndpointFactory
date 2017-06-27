@@ -16,3 +16,4 @@
 
 com.weibo.api.motan.protocol.restful.support.netty.NettyEndpointFactory
 com.weibo.api.motan.protocol.restful.support.servlet.ServletEndpointFactory
+com.weibo.api.motan.protocol.restful.support.undertow.UndertowEndpointFactory

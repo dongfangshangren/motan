@@ -92,7 +92,7 @@ public class RestfulProtocol extends AbstractProtocol {
 		public void destroy() {
 			endpointFactory.safeReleaseResource(server, url);
 
-			LoggerUtil.info("RestfulExporter destory Success: url={}", url);
+			LoggerUtil.info("RestfulExporter destroy Success: url={}", url);
 		}
 
 		@Override
@@ -112,7 +112,7 @@ public class RestfulProtocol extends AbstractProtocol {
 			super(clz, url);
 
 			endpointFactory = ExtensionLoader.getExtensionLoader(EndpointFactory.class).getExtension(
-					url.getParameter(URLParamType.endpointFactory.getName(), URLParamType.endpointFactory.getValue()));
+					url.getParameter(URLParamType.endpointFactory.getName(), "netty"));
 			target = endpointFactory.createClient(url);
 		}
 
@@ -120,7 +120,7 @@ public class RestfulProtocol extends AbstractProtocol {
 		public void destroy() {
 			endpointFactory.safeReleaseResource(target, url);
 
-			LoggerUtil.info("RestfulReferer destory client: url={}" + url);
+			LoggerUtil.info("RestfulReferer destroy client: url={}" + url);
 		}
 
 		@Override
